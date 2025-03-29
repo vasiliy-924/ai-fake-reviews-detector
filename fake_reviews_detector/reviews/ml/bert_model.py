@@ -11,9 +11,8 @@ def load_model():
     return model, tokenizer
 
 def predict_fake(text, model, tokenizer):
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
-    outputs = model(**inputs)
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+    with torch.no_grad():
+        outputs = model(**inputs)
     probs = torch.softmax(outputs.logits, dim=1)
-    prob_fake = probs[0][1].item()
-    print(f"Вероятность фейка: {prob_fake}")  # Должно выводить число (например, 0.83)
-    return prob_fake
+    return probs[0][1].item()  # Вероятность класса "фейк"
