@@ -1,0 +1,58 @@
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyd
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Database and secrets
+*.sqlite3
+*.db
+.env
+.env.local
+secrets.json
+
+# ML and data files
+*.bin
+*.h5
+*.pth
+*.joblib
+/data/
+/datasets/
+
+# Celery
+celerybeat-schedule
+
+# Static files (если собираются при деплое)
+/staticfiles/
+/media/
+
+# Логи и кэш
+*.log
+.cache
+
+# Модели RuBERT
+/reviews/ml/models/
+!/reviews/ml/bert_model.py  # Сам код оставляем
+
+# Докер (если используется)
+/.dockerignore
+*/temp/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Python
+*.egg-info/
+dist/
+build/

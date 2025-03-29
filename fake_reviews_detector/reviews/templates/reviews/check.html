@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Проверка отзыва</title>
+    <style>
+        .fake { color: red; }
+        .real { color: green; }
+        textarea { width: 500px; height: 150px; }
+    </style>
+</head>
+<body>
+    <h1>Проверьте отзыв на фейк</h1>
+    <form method="post">
+        {% csrf_token %}
+        <textarea name="text" required></textarea><br>
+        <button type="submit">Проверить</button>
+    </form>
+
+    {% if result %}
+    <div class="result {% if result.is_fake %}fake{% else %}real{% endif %}">
+        <h3>Результат:</h3>
+        <p>Вероятность фейка: {{ result.probability|floatformat:2 }}%</p>
+        <p>Текст: {{ result.review.text|truncatechars:100 }}</p>
+    </div>
+    {% endif %}
+</body>
+</html>
