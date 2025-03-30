@@ -9,20 +9,18 @@ def check_review_view(request):
     # Обработка AJAX-запроса
     if request.method == 'POST':
         text = request.POST.get('text', '').strip()
-        
         if not text:
             return JsonResponse(
                 {'error': 'Введите текст отзыва'}, 
                 status=400
             )
-            
         try:
             # Создаём запись в БД
             review = Review.objects.create(
                 text=text, 
                 source='web_form'
             )
-            
+
             # Запускаем асинхронную задачу
             task = analyze_review.delay(review.id)
             

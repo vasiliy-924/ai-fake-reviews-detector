@@ -2,8 +2,8 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 
-from .models import AnalysisResult, Review
-from .tasks import analyze_review
+from reviews.models import AnalysisResult, Review
+from reviews.tasks import analyze_review
 
 @api_view(['POST'])
 def check_review_api(request):
@@ -27,4 +27,4 @@ def get_result(request, result_id):
             'details': result.details
         })
     except AnalysisResult.DoesNotExist:
-        return Response({'status': 'pending'}, status=202)
+        return Response({'status': 'pending'}, status=status.HTTP_200_OK)
