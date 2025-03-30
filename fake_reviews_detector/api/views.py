@@ -26,7 +26,8 @@ def get_result(request, result_id):
             'status': 'complete',
             'is_fake': result.is_fake,
             'probability': result.probability,
-            'details': result.details
+            'details': result.details,
+            'result_id': str(result.id)
         })
     except AnalysisResult.DoesNotExist:
         return Response({'status': 'pending'}, status=status.HTTP_200_OK)

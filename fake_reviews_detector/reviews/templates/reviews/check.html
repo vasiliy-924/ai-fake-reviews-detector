@@ -46,6 +46,10 @@
             opacity: 1;
             transform: translateY(0);
         }
+        
+        .progress-bar {
+            transition: width 0.5s ease;
+        }
     </style>
 </head>
 <body class="d-flex align-items-center">
@@ -73,9 +77,16 @@
                     
                     <div class="text-center">
                         <div class="loader mx-auto"></div>
+                        <div id="progressContainer" class="mt-3" style="display: none;">
+                            <div class="progress">
+                                <div id="analysisProgress" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <p class="text-muted mt-2">Идет анализ отзыва...</p>
+                        </div>
                     </div>
                     
-                    <div id="resultContainer" class="result-card"></div>
+                    <div id="resultContainer" class="result-card mt-3"></div>
                 </div>
             </div>
         </div>
@@ -84,119 +95,111 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function() {
-            $('#reviewForm').submit(function(e) {
+            $('#reviewForm').on('submit', function(e) {
                 e.preventDefault();
                 $('.loader').show();
+                $('#progressContainer').show();
                 $('#resultContainer').empty().removeClass('show-result');
                 
+                // Анимация прогресса
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    progress += Math.random() * 10;
+                    if (progress > 90) progress = 90;
+                    $('#analysisProgress').css('width', progress + '%');
+                }, 500);
+
                 $.ajax({
                     type: 'POST',
-                    url: '{% url "check" %}',
+                    url: "{% url 'check' %}",
                     data: $(this).serialize(),
                     success: function(response) {
-                        if (response.result_id) {
-                            checkResult(response.result_id);
-                        } else if (response.error) {
-                            showError(response.error);
-                        }
+                        // Запускаем проверку статуса
+                        checkAnalysisStatus(response.task_id, progressInterval);
                     },
-                    error: function() {
-                        showError('Ошибка соединения с сервером');
+                    error: function(xhr) {
+                        clearInterval(progressInterval);
+                        showError(xhr.responseJSON?.error || 'Ошибка сервера');
                     }
                 });
             });
-            
-            function checkResult(resultId) {
-                const checkInterval = setInterval(function() {
-                    $.get(`/api/results/${resultId}/`, function(data) {
-                        if (data.status === 'complete') {
-                            clearInterval(checkInterval);
-                            showResult(data);
-                        } else if (data.status === 'pending') {
-                            // Продолжаем проверять
+
+            function checkAnalysisStatus(taskId, progressInterval) {
+                const statusCheck = setInterval(() => {
+                    $.get(`/api/task-status/${taskId}/`, function(taskResult) {
+                        if (taskResult.status === 'SUCCESS') {
+                            clearInterval(progressInterval);
+                            clearInterval(statusCheck);
+                            $('#analysisProgress').css('width', '100%');
+                            setTimeout(() => {
+                                getAnalysisResult(taskResult.result);
+                            }, 500);
+                        } else if (taskResult.status === 'FAILURE') {
+                            clearInterval(progressInterval);
+                            clearInterval(statusCheck);
+                            showError('Ошибка при анализе отзыва');
                         }
+                    }).fail(function() {
+                        clearInterval(progressInterval);
+                        clearInterval(statusCheck);
+                        showError('Ошибка при проверке статуса');
                     });
                 }, 2000);
             }
-            
+
+            function getAnalysisResult(resultId) {
+                // Пробуем оба варианта URL
+                const urls = [
+                    `/api/results/${resultId}/`,
+                    `/api/results/${resultId}/`  // Повтор для надежности
+                ];
+                
+                // Пробуем первый URL
+                $.get(urls[0])
+                    .done(function(analysis) {
+                        showResult(analysis);
+                    })
+                    .fail(function() {
+                        // Если первый не сработал, пробуем второй
+                        $.get(urls[1])
+                            .done(showResult)
+                            .fail(function() {
+                                showError('Не удалось получить результат анализа');
+                            });
+                    });
+            }
+
             function showResult(data) {
                 const resultClass = data.is_fake ? 'alert-danger' : 'alert-success';
+                const resultTitle = data.is_fake ? 
+                    '⚠️ Обнаружен подозрительный отзыв!' : 
+                    '✅ Отзыв выглядит достоверно';
+                
                 const resultHTML = `
-                    <div class="alert ${resultClass} show-result p-4">
-                        <h4 class="alert-heading">${data.is_fake ? '⚠️ Подозрительный отзыв!' : '✅ Отзыв похож на настоящий'}</h4>
+                    <div class="alert ${resultClass}">
+                        <h4 class="alert-heading">${resultTitle}</h4>
                         <hr>
-                        <p class="mb-1"><strong>Вероятность фейка:</strong> ${(data.probability * 100).toFixed(1)}%</p>
-                        <p class="mb-0"><strong>Анализ:</strong> ${data.details.model}</p>
+                        <p><strong>Вероятность фейка:</strong> ${(data.probability * 100).toFixed(1)}%</p>
+                        <p><strong>Модель анализа:</strong> ${data.details.model || 'RuBERT'}</p>
+                        <p class="mb-0 small text-muted">ID анализа: ${data.result_id || 'неизвестен'}</p>
                     </div>
                 `;
-                
+
                 $('.loader').hide();
+                $('#progressContainer').hide();
                 $('#resultContainer')
                     .html(resultHTML)
                     .addClass('show-result');
             }
-            
+
             function showError(message) {
                 $('.loader').hide();
+                $('#progressContainer').hide();
                 $('#resultContainer')
-                    .html(`<div class="alert alert-warning show-result">${message}</div>`)
+                    .html(`<div class="alert alert-danger">${message}</div>`)
                     .addClass('show-result');
             }
         });
-    </script>
-    <script>
-    $(document).ready(function() {
-        $('#reviewForm').on('submit', function(e) {
-            e.preventDefault();
-            $('.loader').show();
-            $('#resultContainer').empty().removeClass('show-result');
-            
-            $.ajax({
-                type: 'POST',
-                url: "{% url 'check' %}",
-                data: $(this).serialize(),
-                success: function(response) {
-                    // Проверяем статус задачи Celery
-                    const checkTaskStatus = setInterval(() => {
-                        $.get(`/api/task-status/${response.task_id}/`, (task_result) => {
-                            if (task_result.status === 'SUCCESS') {
-                                clearInterval(checkTaskStatus);
-                                // Теперь запрашиваем результат из БД
-                                $.get(`/api/results/${response.review_id}/`, (analysis) => {
-                                    showAnalysisResult(analysis);
-                                });
-                            } else if (task_result.status === 'FAILURE') {
-                                clearInterval(checkTaskStatus);
-                                $('#resultContainer').html(
-                                    '<div class="alert alert-danger">Ошибка анализа</div>'
-                                ).addClass('show-result');
-                            }
-                        });
-                    }, 1000);
-                },
-                error: function(xhr) {
-                    $('#resultContainer').html(
-                        `<div class="alert alert-danger">Ошибка: ${xhr.responseJSON?.error || 'Неизвестная ошибка'}</div>`
-                    ).addClass('show-result');
-                    $('.loader').hide();
-                }
-            });
-        });
-    
-        function showAnalysisResult(result) {
-            const fakeClass = result.is_fake ? 'alert-danger' : 'alert-success';
-            const fakeText = result.is_fake ? 'Фейковый' : 'Настоящий';
-            
-            $('#resultContainer').html(`
-                <div class="alert ${fakeClass} mt-3">
-                    <h4>Результат анализа:</h4>
-                    <p>Статус: <strong>${fakeText}</strong></p>
-                    <p>Вероятность: ${(result.probability * 100).toFixed(2)}%</p>
-                </div>
-            `).addClass('show-result');
-            $('.loader').hide();
-        }
-    });
     </script>
 </body>
 </html>
