@@ -11,7 +11,7 @@ class Review(models.Model):
         return f'Отзыв #{self.id}'
 
 class AnalysisResult(models.Model):
-    review = models.OneToOneField(Review, on_delete=models.CASCADE, related_name='analisis')
+    review = models.OneToOneField(Review, on_delete=models.CASCADE, related_name='analysis')
     is_fake = models.BooleanField(verbose_name='Фейковый?')
     probability = models.FloatField(verbose_name='Вероятность (0-1)')
     details = models.JSONField(default=dict)  # Доп. данные (метки, шаблоны)
