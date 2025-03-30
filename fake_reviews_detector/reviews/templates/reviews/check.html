@@ -144,5 +144,59 @@
             }
         });
     </script>
+    <script>
+    $(document).ready(function() {
+        $('#reviewForm').on('submit', function(e) {
+            e.preventDefault();
+            $('.loader').show();
+            $('#resultContainer').empty().removeClass('show-result');
+            
+            $.ajax({
+                type: 'POST',
+                url: "{% url 'check' %}",
+                data: $(this).serialize(),
+                success: function(response) {
+                    // Проверяем статус задачи Celery
+                    const checkTaskStatus = setInterval(() => {
+                        $.get(`/api/task-status/${response.task_id}/`, (task_result) => {
+                            if (task_result.status === 'SUCCESS') {
+                                clearInterval(checkTaskStatus);
+                                // Теперь запрашиваем результат из БД
+                                $.get(`/api/results/${response.review_id}/`, (analysis) => {
+                                    showAnalysisResult(analysis);
+                                });
+                            } else if (task_result.status === 'FAILURE') {
+                                clearInterval(checkTaskStatus);
+                                $('#resultContainer').html(
+                                    '<div class="alert alert-danger">Ошибка анализа</div>'
+                                ).addClass('show-result');
+                            }
+                        });
+                    }, 1000);
+                },
+                error: function(xhr) {
+                    $('#resultContainer').html(
+                        `<div class="alert alert-danger">Ошибка: ${xhr.responseJSON?.error || 'Неизвестная ошибка'}</div>`
+                    ).addClass('show-result');
+                    $('.loader').hide();
+                }
+            });
+        });
+    
+        function showAnalysisResult(result) {
+            const fakeClass = result.is_fake ? 'alert-danger' : 'alert-success';
+            const fakeText = result.is_fake ? 'Фейковый' : 'Настоящий';
+            
+            $('#resultContainer').html(`
+                <div class="alert ${fakeClass} mt-3">
+                    <h4>Результат анализа:</h4>
+                    <p>Статус: <strong>${fakeText}</strong></p>
+                    <p>Вероятность: ${(result.probability * 100).toFixed(2)}%</p>
+                </div>
+            `).addClass('show-result');
+            $('.loader').hide();
+        }
+    });
+    </script>
 </body>
 </html>

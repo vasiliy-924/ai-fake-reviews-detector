@@ -15,18 +15,15 @@ def check_review_view(request):
                 status=400
             )
         try:
-            # Создаём запись в БД
-            review = Review.objects.create(
+            review = Review.objects.create(  # Создаём запись в БД
                 text=text, 
                 source='web_form'
             )
 
-            # Запускаем асинхронную задачу
-            task = analyze_review.delay(review.id)
+            task = analyze_review.delay(review.id)  # Запускаем асинхронную задачу
             
-            # Возвращаем ID задачи для отслеживания статуса
-            return JsonResponse({
-                'result_id': task.id,
+            return JsonResponse({  # Возвращаем ID задачи для отслеживания статуса
+                'task_id': task.id,
                 'review_id': review.id
             })
             

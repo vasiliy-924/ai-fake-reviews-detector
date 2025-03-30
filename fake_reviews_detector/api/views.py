@@ -1,6 +1,8 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
+from celery.result import AsyncResult
+from django.http import JsonResponse
 
 from reviews.models import AnalysisResult, Review
 from reviews.tasks import analyze_review
@@ -28,3 +30,10 @@ def get_result(request, result_id):
         })
     except AnalysisResult.DoesNotExist:
         return Response({'status': 'pending'}, status=status.HTTP_200_OK)
+
+def task_status(request, task_id):
+    task = AsyncResult(task_id)
+    return JsonResponse({
+        'status': task.status,
+        'result': task.result if task.ready() else None
+    })
