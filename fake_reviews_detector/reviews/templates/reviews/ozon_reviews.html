@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Результаты анализа Ozon</title>
+    <style>
+        .review { 
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+        .rating { color: #f39c12; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Последние отзывы с Ozon</h1>
+    
+    {% if reviews %}
+        <div class="reviews-list">
+            {% for review in reviews %}
+                <div class="review">
+                    <div class="rating">★ {{ review.rating }}/5</div>
+                    <p>{{ review.text }}</p>
+                    <div class="source">{{ review.source }}</div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>Отзывы не найдены</p>
+    {% endif %}
+</body>
+</html>
