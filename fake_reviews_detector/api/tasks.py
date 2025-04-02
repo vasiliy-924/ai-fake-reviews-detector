@@ -1,15 +1,16 @@
 # fake_reviews_detector/api/tasks.py
 from celery import shared_task
-from .parsers.otzovik_parser import fetch_ozon_reviews
+from .parsers.otzovik_parser import fetch_otzovik_reviews
 from reviews.models import Review
+import logging
+
+logger = logging.getLogger(__name__)
 
 @shared_task
-def parse_and_save_ozon_reviews(product_id: str):
-    """Задача Celery: парсинг через ScraperAPI."""
+def parse_and_save_otzovik_reviews(url: str) -> str:
     try:
-        reviews = fetch_ozon_reviews(product_id)
-        
-        for review_data in reviews:  # Сохранение с проверкой дублей по тексту
+        reviews = fetch_otzovik_reviews(url)
+        for review_data in reviews:
             Review.objects.update_or_create(
                 text=review_data["text"],
                 defaults={
@@ -17,8 +18,6 @@ def parse_and_save_ozon_reviews(product_id: str):
                     "source": review_data["source"]
                 }
             )
-            
-        return f"Сохранено отзывов: {len(reviews)}"
-    
+        return f"Добавлено {len(reviews)} отзывов"
     except Exception as e:
         return f"Ошибка: {str(e)}"

@@ -1,9 +1,10 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from .models import Review, AnalysisResult
+from django.core.exceptions import ValidationError
+from .models import Review
 from .tasks import analyze_review
-from fake_reviews_detector.api.parsers.otzovik_parser import fetch_ozon_reviews
+from api.parsers.otzovik_parser import fetch_otzovik_reviews as otzovik_fetch, validate_otzovik_url
 
 @require_http_methods(["GET", "POST"])
 def check_review_view(request):
@@ -37,13 +38,19 @@ def check_review_view(request):
     # GET-запрос: показать пустую форму
     return render(request, 'reviews/check.html')
 
-def show_ozon_reviews(request):
-    product_url = "https://www.ozon.ru/product/ваш-id-товара/"
-    try:
-        reviews = fetch_ozon_reviews(product_url)
-    except Exception as e:
-        reviews = []
+@require_http_methods(["GET"])
+def fetch_otzovik_reviews_view(request):
+    # Получаем URL для получения отзывов через GET-параметр, если он не указан, используем значение по умолчанию
+    product_url = request.GET.get('product_url', 'https://otzovik.com/reviews/film_nastupit_leto_2024/')
     
-    return render(request, 'reviews/ozon_reviews.html', {
-        'reviews': reviews
-    })
+    try:
+        # Валидируем URL согласно требованиям Отзовика
+        validate_otzovik_url(product_url)
+        reviews = otzovik_fetch(product_url)
+    except ValidationError as ve:
+        return JsonResponse({'error': str(ve)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Ошибка при получении отзывов: {str(e)}'}, status=500)
+
+    # Рендерим шаблон с отзывами
+    return render(request, 'reviews/otzovik_reviews.html', {'reviews': reviews})
