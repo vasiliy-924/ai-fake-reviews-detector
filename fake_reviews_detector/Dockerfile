@@ -1,9 +1,15 @@
 FROM python:3.9-slim
 
 # Установка системных зависимостей с явным указанием пакета netcat-traditional
-RUN apt-get update && apt-get install -y \
-    iputils-ping \
-    netcat-traditional \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        iputils-ping \
+        netcat-traditional \
+        libxml2-dev \
+        libxslt1-dev \
+        gcc \
+        curl \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

@@ -1,33 +1,43 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Результаты анализа ОТЗОВИК.РУ</title>
+    <!-- Добавлен адаптивный дизайн -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        .review { 
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 8px;
+        .review {
+            background: #f9f9f9;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .rating { color: #f39c12; font-weight: bold; }
+        .rating { color: #e67e22; }
+        .source { 
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 10px;
+        }
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .review { padding: 10px; }
+        }
     </style>
 </head>
 <body>
-    <h1>Последние отзывы с ОТЗОВИК.РУ</h1>
-    
     {% if reviews %}
         <div class="reviews-list">
             {% for review in reviews %}
                 <div class="review">
-                    <div class="rating">★ {{ review.rating }}/5</div>
-                    <p>{{ review.text }}</p>
-                    <div class="source">{{ review.source }}</div>
+                    <div class="rating">★ {{ review.rating|floatformat:1 }}</div>
+                    <blockquote>{{ review.text }}</blockquote>
+                    <div class="source">
+                        Источник: {{ review.source }}<br>
+                        {% if review.meta.url %}
+                            <a href="{{ review.meta.url }}" target="_blank">Ссылка</a>
+                        {% endif %}
+                    </div>
                 </div>
             {% endfor %}
         </div>
     {% else %}
-        <p>Отзывы не найдены</p>
+        <div class="alert">😕 Отзывов не найдено</div>
     {% endif %}
 </body>
 </html>

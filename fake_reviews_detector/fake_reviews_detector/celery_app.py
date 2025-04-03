@@ -9,6 +9,11 @@ app = Celery('fake_reviews_detector')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
+app.conf.update(
+    broker_connection_retry_on_startup=True,  # Решение предупреждения
+    worker_redirect_stdouts=False
+)
+
 app.conf.beat_schedule = {
     'parse-otzovik-daily': {
         'task': 'api.tasks.parse_and_save_otzovik_reviews',  # Путь к задаче

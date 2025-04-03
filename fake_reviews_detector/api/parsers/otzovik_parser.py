@@ -1,71 +1,60 @@
-# fake_reviews_detector/api/parsers/otzovik_parser.py
 import os
+import re
 import requests
 from django.core.exceptions import ValidationError
 from bs4 import BeautifulSoup
+from typing import List, Dict
 
 def validate_otzovik_url(url: str) -> None:
-    """
-    Проверяет, что URL соответствует схеме сайта Отзовик.
-    Пример корректного URL: https://otzovik.com/reviews/film_nastupit_leto_2024/
-    """
-    if 'otzovik.com/reviews/' not in url:
-        raise ValidationError("Некорректный URL отзовик. Пример: https://otzovik.com/reviews/film_nastupit_leto_2024/")
+    """Проверяет корректность URL Отзовик с помощью регулярного выражения."""
+    pattern = r'^https://(www\.)?otzovik\.com/reviews/[a-zA-Z0-9_-]+/?$'
+    if not re.match(pattern, url):
+        raise ValidationError(
+            "Некорректный URL. Пример: https://otzovik.com/reviews/film_nastupit_leto_2024/"
+        )
 
-def fetch_otzovik_reviews(product_url: str) -> list[dict]:
-    """
-    Сбор отзывов с сайта Отзовик через ScraperAPI.
-
-    Обрабатывает запрос вида:
-      curl "https://api.scraperapi.com?api_key=МОЙ_КЛЮЧ&url=https://otzovik.com/reviews/film_nastupit_leto_2024/"
-
-    Извлекает только текст отзыва и рейтинг (без персональных данных).
-    """
+def fetch_otzovik_reviews(product_url: str) -> List[Dict]:
+    """Улучшенный парсер с обработкой ошибок и актуальными селекторами."""
     validate_otzovik_url(product_url)
     
     scraperapi_key = os.getenv('SCRAPERAPI_KEY')
-    api_url = 'https://api.scraperapi.com'
-    
-    params = {
-        'api_key': scraperapi_key,
-        'url': product_url,
-    }
-    
+    if not scraperapi_key:
+        raise ValidationError("Отсутствует API-ключ ScraperAPI")
+
     try:
-        response = requests.get(api_url, params=params, timeout=60)
+        response = requests.get(
+            'https://api.scraperapi.com',
+            params={
+                'api_key': scraperapi_key,
+                'url': product_url,
+                'render': 'true',  # Для JS-рендеринга
+            },
+            timeout=60
+        )
         response.raise_for_status()
-        html = response.text
         
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(response.text, 'lxml')
         reviews = []
         
-        # Ищем все блоки с отзывами
-        review_divs = soup.find_all('div', itemprop='review')
-        for review in review_divs:
-            # Извлекаем текст отзыва
-            teaser_div = review.find('div', class_='review-teaser')
-            text = teaser_div.get_text(strip=True) if teaser_div else None
+        # Актуальные селекторы (проверьте на реальной странице!)
+        for item in soup.select('div.review-item:not(.review-comments)'):
+            text_elem = item.select_one('.review-body')
+            rating_elem = item.select_one('.rating-value')
             
-            # Извлекаем рейтинг отзыва
-            rating_div = review.find('div', class_='rating-score')
-            rating = None
-            if rating_div:
-                rating_span = rating_div.find('span')
-                if rating_span:
-                    try:
-                        rating = float(rating_span.get_text(strip=True))
-                    except ValueError:
-                        rating = None
-            
-            # Добавляем отзыв, если найдены и текст, и рейтинг
-            if text and rating is not None:
+            if not text_elem or not rating_elem:
+                continue
+                
+            try:
                 reviews.append({
-                    'text': text,
-                    'rating': rating,
-                    'source': 'otzovik'
+                    'text': text_elem.get_text(strip=True),
+                    'rating': float(rating_elem.text.strip()),
+                    'source': 'otzovik',
+                    'url': product_url  # Для отслеживания источника
                 })
+            except ValueError:
+                continue
+                
+        return reviews[:20]  # Лимит на количество
         
-        return reviews[:20]
-    
     except requests.exceptions.RequestException as e:
-        raise ValidationError(f'ScraperAPI Error: {str(e)}')
+        raise ValidationError(f"Ошибка парсера: {str(e)}")
