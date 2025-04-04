@@ -13,6 +13,8 @@ Django==4.2.8
 django-cors-headers==4.7.0
 django-rest-framework==0.1.0
 djangorestframework==3.16.0
+django-celery-beat==2.5.0
+django-celery-results==2.5.1
 filelock==3.18.0
 flower==2.0.1
 fsspec==2025.3.0

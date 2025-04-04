@@ -31,6 +31,8 @@ INSTALLED_APPS = [
     'api',
     'rest_framework',
     'celery',
+    'django_celery_beat',
+    'django_celery_results',
 ]
 
 # Настройка REST API (Django REST Fremework)
@@ -130,5 +132,23 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Настройка БД(PostgreSQL):
 CELERY_BROKER_URL = 'redis://redis:6379/0'
 CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = "Europe/Moscow"
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+LOGGING = {
+    'version': 1,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        __name__: {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}
