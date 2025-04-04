@@ -1,0 +1,91 @@
+
+services:
+  web:
+    build: 
+      context: ./fake_reviews_detector
+      dockerfile: Dockerfile
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./fake_reviews_detector:/app
+      - ./fake_reviews_detector/api:/app/api
+      - ./fake_reviews_detector/reviews:/app/reviews
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app:/app/fake_reviews_detector
+    env_file: 
+      - .env
+    networks:
+      - app-network
+    depends_on:
+      - redis
+      - db
+
+  celery_worker:
+    build: 
+      context: ./fake_reviews_detector
+      dockerfile: Dockerfile
+    command: celery -A fake_reviews_detector.celery_app worker --loglevel=info
+    volumes:
+      - ./fake_reviews_detector:/app
+      - ./fake_reviews_detector/api:/app/api
+      - ./fake_reviews_detector/reviews:/app/reviews
+    environment:
+      - PYTHONPATH=/app:/app/fake_reviews_detector
+    env_file:
+      - .env
+    networks:
+      - app-network
+    depends_on:
+      - web
+      - redis
+
+  celery_beat:
+    build: 
+      context: ./fake_reviews_detector
+      dockerfile: Dockerfile
+    command: celery -A fake_reviews_detector.celery_app beat -l INFO
+    volumes:
+      - ./fake_reviews_detector:/app
+      - ./fake_reviews_detector/api:/app/api
+      - ./fake_reviews_detector/reviews:/app/reviews
+    environment:
+      - PYTHONPATH=/app:/app/fake_reviews_detector
+    env_file:
+      - .env
+    networks:
+      - app-network
+    depends_on:
+      - redis
+      - web
+
+  redis:
+    image: arm64v8/redis:alpine  #попробовать imgage: arm64v8/redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge
