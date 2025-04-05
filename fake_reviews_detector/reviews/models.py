@@ -9,6 +9,7 @@ class Review(models.Model):
     meta = models.JSONField(default=dict, verbose_name='Метаданные')  # URL, дата парсинга и т.д.
     date_created = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     is_verified = models.BooleanField(default=False, verbose_name='Проверен')
+    is_fake = models.BooleanField(default=False, verbose_name='Фейковый')
 
     class Meta:
         verbose_name = 'Отзыв'

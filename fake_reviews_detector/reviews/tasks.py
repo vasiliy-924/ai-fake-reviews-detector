@@ -1,8 +1,9 @@
 from celery import shared_task
 from .models import Review, AnalysisResult
 from .ml.bert_model import load_model, predict_fake
+from django.conf import settings
 
-model, tokenizer = load_model()  # Загружаем модель и токенизатор ОДИН РАЗ при старте воркера
+model, tokenizer = load_model()   # Загружаем модель и токенизатор ОДИН РАЗ при старте воркера
 
 @shared_task(bind=True)
 def analyze_review(self, review_id):
@@ -19,8 +20,9 @@ def analyze_review(self, review_id):
         return str(result.id)
         
     except Exception as e:
-        analyze_review.update_state(  # Логируем ошибку
+        self.update_state(  # Логируем ошибку
             state='FAILURE', 
             meta={'exc': str(e)}
         )
         raise
+
