@@ -85,6 +85,9 @@ def fetch_otzovik_reviews(product_url: str) -> List[Dict]:
                 # Новый селектор рейтинга: span в .rating-score
                 rating_elem = item.select_one('.rating-score span')
 
+                reputation_elem = item.select_one('.karma-line span.karma')
+                reputation = int(reputation_elem.text) if reputation_elem else 0
+
                 if not text_elem or not rating_elem:
                     logger.debug(f"Review #{idx} пропущен: отсутствует текст или рейтинг")
                     continue
@@ -103,7 +106,8 @@ def fetch_otzovik_reviews(product_url: str) -> List[Dict]:
                     'text': text,
                     'rating': rating,
                     'source': 'otzovik',
-                    'url': product_url
+                    'url': product_url,
+                    'reputation': reputation
                 })
             except Exception as e:
                 logger.warning(f"Error parsing review #{idx}: {str(e)}")

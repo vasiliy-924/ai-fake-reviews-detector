@@ -10,6 +10,7 @@ class Review(models.Model):
     date_created = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     is_verified = models.BooleanField(default=False, verbose_name='Проверен')
     is_fake = models.BooleanField(default=False, verbose_name='Фейковый')
+    reputation = models.IntegerField(default=0, verbose_name='Репутация')
 
     class Meta:
         verbose_name = 'Отзыв'

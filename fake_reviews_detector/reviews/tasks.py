@@ -11,11 +11,19 @@ def analyze_review(self, review_id):
         review = Review.objects.get(id=review_id)  # Получаем отзыв из БД
         prob = predict_fake(review.text, model, tokenizer)  # Делаем предсказание
         is_fake = prob > 0.5  # Определяем фейк (порог 0.5)
+        if review.reputation < 1:
+            is_fake = True
+            prob = 0.8  # Скорее всего фейк
+
+
         result = AnalysisResult.objects.create(  # Сохраняем результат
             review=review,
             is_fake=is_fake,
             probability=prob,
-            details={'model': 'RuBERT'}
+            details={
+                'model': 'RuBERT',
+                'reputation_checked': review.reputation < 2
+            }
         )
         return str(result.id)
         
