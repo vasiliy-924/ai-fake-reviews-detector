@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Парсинг отзывов | Fake Reviews Detector</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .card-glass {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        .rating-stars {
+            color: #ffd700;
+            font-size: 1.2rem;
+        }
+        .progress-loading {
+            height: 4px;
+            overflow: hidden;
+            background-color: #e9ecef;
+        }
+        .progress-bar {
+            transition: width 1s ease-in-out;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="gradient-bg">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card card-glass p-4 mb-4">
+                    <h2 class="text-center mb-4">🕵️ Парсинг отзывов</h2>
+                    <form id="parseForm" method="post">
+                        {% csrf_token %}
+                        <div class="input-group mb-3">
+                            <input type="url" 
+                                   name="url" 
+                                   class="form-control form-control-lg" 
+                                   placeholder="https://otzovik.com/reviews/..."
+                                   required>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                Запустить парсинг
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="progress-loading d-none">
+                        <div class="progress-bar bg-info" style="width: 0%"></div>
+                    </div>
+
+                    <div id="statusAlert" class="alert alert-info d-none fade-in"></div>
+                    
+                    <div id="resultsSection" class="d-none fade-in">
+                        <h4 class="mt-4 mb-3">📝 Результаты парсинга:</h4>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Текст</th>
+                                        <th style="width: 120px">Рейтинг</th>
+                                        <th style="width: 100px">Источник</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="resultsBody">
+                                    <!-- Сюда будут добавляться отзывы -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('parseForm').addEventListener('submit', async (e) => {
+            e.preventDefault()
+            const form = e.target
+            const button = form.querySelector('button')
+            const spinner = button.querySelector('.spinner-border')
+            const progress = document.querySelector('.progress-loading')
+            const progressBar = document.querySelector('.progress-bar')
+            const statusAlert = document.getElementById('statusAlert')
+            const resultsSection = document.getElementById('resultsBody')
+
+            // Сброс предыдущих результатов
+            resultsSection.innerHTML = ''
+            document.getElementById('resultsSection').classList.add('d-none')
+
+            // Активация индикатора загрузки
+            button.disabled = true
+            spinner.classList.remove('d-none')
+            progress.classList.remove('d-none')
+            statusAlert.classList.add('d-none')
+
+            try {
+                const response = await fetch('/parse/', {
+                    method: 'POST',
+                    body: new FormData(form)
+                })
+
+                if (!response.ok) throw new Error('Ошибка сервера')
+                const { task_id } = await response.json()
+
+                // Запуск отслеживания статуса
+                checkTaskStatus(task_id, progressBar, statusAlert)
+            } catch (error) {
+                showAlert(statusAlert, `❌ ${error.message}`, 'danger')
+            } finally {
+                button.disabled = false
+                spinner.classList.add('d-none')
+            }
+        })
+
+        async function checkTaskStatus(taskId, progressBar, alertElement) {
+            let progress = 0
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/task-status/${taskId}/`)
+                    const data = await response.json()
+                    
+                    if (data.status === 'SUCCESS') {
+                        clearInterval(interval)
+                        progressBar.style.width = '100%'
+                        showAlert(alertElement, '✅ Парсинг успешно завершен!', 'success')
+                        showResults(data.result)
+                    } else if (data.status === 'FAILURE') {
+                        clearInterval(interval)
+                        showAlert(alertElement, `❌ Ошибка: ${data.result}`, 'danger')
+                    } else {
+                        progress = Math.min(progress + 20, 90)
+                        progressBar.style.width = `${progress}%`
+                    }
+                } catch (error) {
+                    clearInterval(interval)
+                    showAlert(alertElement, '❌ Ошибка соединения', 'danger')
+                }
+            }, 1000)
+        }
+
+        function showResults(reviews) {
+            const tbody = document.getElementById('resultsBody')
+            const section = document.getElementById('resultsSection')
+            
+            reviews.forEach(review => {
+                const row = document.createElement('tr')
+                row.className = 'fade-in'
+                row.innerHTML = `
+                    <td>${review.text}</td>
+                    <td>
+                        <div class="rating-stars">
+                            ${'★'.repeat(Math.round(review.rating))}
+                            ${'☆'.repeat(5 - Math.round(review.rating))}
+                        </div>
+                        <small class="text-muted">${review.rating}/5</small>
+                    </td>
+                    <td><span class="badge bg-primary">${review.source}</span></td>
+                `
+                tbody.appendChild(row)
+            })
+            
+            section.classList.remove('d-none')
+        }
+
+        function showAlert(element, message, type) {
+            element.textContent = message
+            element.className = `alert alert-${type} fade-in d-block`
+            setTimeout(() => element.classList.remove('fade-in'), 500)
+        }
+    </script>
+</body>
+</html>

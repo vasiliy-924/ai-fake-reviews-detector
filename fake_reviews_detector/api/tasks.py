@@ -31,3 +31,21 @@ def parse_and_save_otzovik_reviews(url: str) -> str:
     except Exception as e:
         logger.error(f"Ошибка в задаче: {str(e)}", exc_info=True)
         return f"Критическая ошибка: {str(e)}"
+    
+@shared_task
+def parse_reviews_task(url: str):
+    try:
+        reviews = fetch_otzovik_reviews(url)
+        for data in reviews:
+            # Сохраняем отзыв, избегая дубликатов
+            Review.objects.get_or_create(
+                text=data['text'],
+                source=data['source'],
+                defaults={
+                    'rating': data['rating'],
+                    'meta': {'url': data['url']}
+                }
+            )
+        return f"Успешно сохранено отзывов: {len(reviews)}"
+    except Exception as e:
+        return f"Ошибка: {str(e)}"

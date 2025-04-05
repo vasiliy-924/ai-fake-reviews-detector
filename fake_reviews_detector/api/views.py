@@ -1,4 +1,5 @@
 from rest_framework.decorators import api_view
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from celery.result import AsyncResult
@@ -6,6 +7,8 @@ from django.http import JsonResponse
 
 from reviews.models import AnalysisResult, Review
 from reviews.tasks import analyze_review
+from .tasks import parse_reviews_task
+from .serializers import ParserTriggerSerializer
 
 @api_view(['POST'])
 def check_review_api(request):
@@ -38,3 +41,28 @@ def task_status(request, task_id):
         'status': task.status,
         'result': task.result if task.ready() else None
     })
+
+class ParseTriggerAPI(APIView):
+    def post(self, request):
+        serializer = ParserTriggerSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        url = serializer.validated_data['url']
+        task = parse_reviews_task.delay(url)  # Запуск задачи
+        
+        return Response({'task_id': task.id}, status=202)
+    
+@api_view(['GET'])
+def task_status_api(request, task_id):
+    """API для проверки статуса задачи Celery"""
+    task = AsyncResult(task_id)
+    
+    response_data = {
+        'status': task.status,
+        'result': task.result if task.ready() else None
+    }
+    
+    if task.failed():
+        response_data['error'] = str(task.result)
+    
+    return Response(response_data)

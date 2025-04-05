@@ -1,5 +1,6 @@
 from django.db import models
 from django.urls import reverse
+from django_celery_beat.models import PeriodicTask
 
 class Review(models.Model):
     text = models.TextField(verbose_name='Текст отзыва', db_index=True)
@@ -33,3 +34,30 @@ class AnalysisResult(models.Model):
     class Meta:
         verbose_name = 'Результат анализа'
         verbose_name_plural = 'Результаты анализов'
+
+class ParserConfig(models.Model):
+    url = models.URLField(verbose_name='URL для парсинга')
+    params = models.JSONField(default=dict, verbose_name='Параметры запроса')
+    is_active = models.BooleanField(default=True, verbose_name='Активен')
+    schedule = models.ForeignKey(
+        PeriodicTask,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Расписание (Celery)'
+    )
+
+    class Meta:
+        verbose_name = 'Конфигурация парсера'
+        verbose_name_plural = 'Конфигурации парсеров'
+
+class DebugLog(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    html_content = models.TextField(verbose_name='HTML-контент')
+    success = models.BooleanField(verbose_name='Успешно')
+    error_message = models.TextField(blank=True, verbose_name='Ошибка')
+
+    class Meta:
+        verbose_name = 'Лог парсера'
+        verbose_name_plural = 'Логи парсера'
+        ordering = ['-created_at']

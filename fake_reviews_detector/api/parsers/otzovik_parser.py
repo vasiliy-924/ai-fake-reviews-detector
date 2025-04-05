@@ -8,6 +8,8 @@ from typing import List, Dict
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from reviews.models import DebugLog
+
 # Настройка логгера
 logger = logging.getLogger(__name__)
 
@@ -62,6 +64,11 @@ def fetch_otzovik_reviews(product_url: str) -> List[Dict]:
         # Сохранение HTML для отладки (можно удалить, если не нужно)
         with open("debug_otzovik.html", "w", encoding="utf-8") as f:
             f.write(response.text)
+
+        DebugLog.objects.create(  # Сохраняем HTML в DebugLog
+            html_content=response.text,
+            success=True
+        )
         
         soup = BeautifulSoup(response.text, 'lxml')
         reviews = []
@@ -107,6 +114,11 @@ def fetch_otzovik_reviews(product_url: str) -> List[Dict]:
     except requests.exceptions.RequestException as e:
         logger.error(f"Request error: {str(e)}", exc_info=True)
         raise ValidationError(f"Ошибка парсера: {str(e)}")
+    
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        DebugLog.objects.create(
+            html_content=response.text if 'response' in locals() else '',
+            success=False,
+            error_message=str(e)
+        )
         raise ValidationError(f"Неожиданная ошибка: {str(e)}")

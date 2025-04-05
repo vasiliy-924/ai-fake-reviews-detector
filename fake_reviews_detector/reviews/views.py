@@ -2,9 +2,13 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.core.exceptions import ValidationError
+from rest_framework.views import APIView
+from rest_framework.response import Response
+
 from .models import Review
 from .tasks import analyze_review
 from api.parsers.otzovik_parser import fetch_otzovik_reviews as otzovik_fetch, validate_otzovik_url
+from api.tasks import parse_reviews_task
 
 @require_http_methods(["GET", "POST"])
 def check_review_view(request):
@@ -54,3 +58,12 @@ def fetch_otzovik_reviews_view(request):
 
     # Рендерим шаблон с отзывами
     return render(request, 'reviews/otzovik_reviews.html', {'reviews': reviews})
+
+class ParseTriggerFormView(APIView):
+    def get(self, request):
+        return render(request, 'reviews/trigger_form.html')
+
+    def post(self, request):
+        url = request.POST.get('url')
+        task = parse_reviews_task.delay(url)
+        return JsonResponse({'task_id': task.id})
