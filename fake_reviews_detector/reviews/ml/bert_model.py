@@ -32,30 +32,27 @@ def compute_metrics(pred):
     }
 
 class BertTrainer:
-    def __init__(self, model_name='DeepPavlov/rubert-base-cased'):
-        self.model = BertForSequenceClassification.from_pretrained(model_name, num_labels=2)
+    def __init__(self, model_name='DeepPavlov/rubert-base-cased', training_args=None):
+        self.model = BertForSequenceClassification.from_pretrained(model_name)
         self.tokenizer = BertTokenizer.from_pretrained(model_name)
-    
-    def train(self, train_dataset, val_dataset, output_dir='./models'):
-        training_args = TrainingArguments(
-            output_dir=output_dir,
-            num_train_epochs=3,
+        self.training_args = training_args or self.get_default_args()  # Дефолтные аргументы
+
+    def get_default_args(self):
+        """Возвращает базовые параметры, если не переданы явно"""
+        return TrainingArguments(
+            output_dir="./results",
             per_device_train_batch_size=8,
-            evaluation_strategy='epoch',
-            save_strategy='epoch',
-            logging_dir='./logs',
-            load_best_model_at_end=True,
-            metric_for_best_model='f1'
+            num_train_epochs=3
         )
-        
+
+    def train(self, train_dataset, val_dataset, output_dir):
+        self.training_args.output_dir = output_dir  # Переопределяем выходную директорию
         trainer = Trainer(
             model=self.model,
-            args=training_args,
+            args=self.training_args,  # Используем переданные аргументы
             train_dataset=train_dataset,
-            eval_dataset=val_dataset,
-            compute_metrics=compute_metrics
+            eval_dataset=val_dataset
         )
-        
         trainer.train()
-        self.model.save_pretrained(f"{output_dir}/finetuned_rubert")
-        self.tokenizer.save_pretrained(f"{output_dir}/finetuned_rubert")
+        self.model.save_pretrained(output_dir)
+        self.tokenizer.save_pretrained(output_dir)
