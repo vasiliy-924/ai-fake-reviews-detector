@@ -46,6 +46,9 @@ def parse_reviews_task(url: str):
                     'meta': {'url': data['url']}
                 }
             )
-        return f"Успешно сохранено отзывов: {len(reviews)}"
+        return {  # Возвращаем структурированные данные!
+            'status': 'success',
+            'reviews': reviews  # Список отзывов
+        }
     except Exception as e:
-        return f"Ошибка: {str(e)}"
+        return {'status': 'error', 'message': str(e)}

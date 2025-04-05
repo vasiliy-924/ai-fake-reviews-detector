@@ -65,4 +65,7 @@ def task_status_api(request, task_id):
     if task.failed():
         response_data['error'] = str(task.result)
     
-    return Response(response_data)
+    return Response({
+        'status': task.status,
+        'result': task.result if task.ready() else None
+    })

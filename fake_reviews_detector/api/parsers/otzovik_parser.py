@@ -109,7 +109,7 @@ def fetch_otzovik_reviews(product_url: str) -> List[Dict]:
                 logger.warning(f"Error parsing review #{idx}: {str(e)}")
                 continue
                 
-        return reviews[:20]
+        return reviews[:50]
         
     except requests.exceptions.RequestException as e:
         logger.error(f"Request error: {str(e)}", exc_info=True)

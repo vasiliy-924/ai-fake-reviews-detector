@@ -138,7 +138,7 @@
                         clearInterval(interval)
                         progressBar.style.width = '100%'
                         showAlert(alertElement, '✅ Парсинг успешно завершен!', 'success')
-                        showResults(data.result)
+                        showResults(data.result.reviews)
                     } else if (data.status === 'FAILURE') {
                         clearInterval(interval)
                         showAlert(alertElement, `❌ Ошибка: ${data.result}`, 'danger')
