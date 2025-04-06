@@ -1,13 +1,18 @@
 # scripts/train_model.py
+# Инициализация Django ДО всех импортов
+import os
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'fake_reviews_detector.settings')
+import django
+django.setup()
+
+# Остальные импорты после инициализации
 import pandas as pd
 from sklearn.model_selection import train_test_split
-import torch
 from reviews.ml.preprocessing import DatasetBuilder
 from reviews.ml.dataset import ReviewDataset
 from reviews.ml.bert_model import BertTrainer
-import os
 from django.conf import settings
-from transformers import TrainingArguments  # Добавляем импорт
+from transformers import TrainingArguments
 
 def main():
     # Инициализация Django
@@ -32,8 +37,8 @@ def main():
     training_args = TrainingArguments(
         output_dir=os.path.join(settings.BASE_DIR, 'models'),
         num_train_epochs=3,
-        per_device_train_batch_size=4,
-        gradient_accumulation_steps=2,
+        per_device_train_batch_size=2,
+        gradient_accumulation_steps=4,
         learning_rate=2e-5,
         warmup_steps=100,
         weight_decay=0.01,
@@ -42,7 +47,7 @@ def main():
         eval_steps=200,
         save_steps=500,
         fp16=False,
-        dataloader_num_workers=2,
+        dataloader_num_workers=0,  # Было 2 вернуть при необходимости
         report_to="none",
         disable_tqdm=False  # Включаем прогресс-бар
     )

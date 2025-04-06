@@ -156,5 +156,7 @@ LOGGING = {
     },
 }
 
-BERT_MODEL_NAME = 'DeepPavlov/rubert-base-cased'  # Используем базовую модель
-# BERT_MODEL_NAME = 'models/finetuned_rubert'  # Закомментируйте
+# BERT_MODEL_NAME = 'DeepPavlov/rubert-base-cased'  # Используем базовую модель
+BERT_MODEL_NAME = 'models/finetuned_rubert'  # Используем обученную модель
+
+USE_DEPRECATED_PYTZ = False

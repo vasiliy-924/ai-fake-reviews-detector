@@ -1,23 +1,27 @@
+import torch
 from transformers import (
     BertTokenizer, 
     BertForSequenceClassification,
     TrainingArguments,
     Trainer 
 )
-import torch
 from sklearn.metrics import accuracy_score, f1_score
 import numpy as np
 from django.conf import settings
+
+device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
 def load_model(model_name=None):
     """Загружает модель из настроек Django"""
     model_name = getattr(settings, 'BERT_MODEL_NAME', 'DeepPavlov/rubert-base-cased')
     tokenizer = BertTokenizer.from_pretrained(model_name)
     model = BertForSequenceClassification.from_pretrained(model_name, num_labels=2)
+    model.to(device)  # Перемещаем модель на устройство (MPS или CPU)
     return model, tokenizer
 
 def predict_fake(text, model, tokenizer):
     inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+    inputs = {k: v.to(device) for k, v in inputs.items()}  # Перемещаем данные на устройство
     with torch.no_grad():
         outputs = model(**inputs)
     probs = torch.softmax(outputs.logits, dim=1)
@@ -35,6 +39,7 @@ class BertTrainer:
     def __init__(self, model_name='DeepPavlov/rubert-base-cased', training_args=None):
         self.model = BertForSequenceClassification.from_pretrained(model_name)
         self.tokenizer = BertTokenizer.from_pretrained(model_name)
+        self.model.to(device)
         self.training_args = training_args or self.get_default_args()  # Дефолтные аргументы
 
     def get_default_args(self):
