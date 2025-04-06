@@ -2,12 +2,9 @@ from pathlib import Path
 import os
 
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+# BASE_DIR = Path(__file__).resolve().parent.parent # используем базовую модель RuBERT
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # Используем обученную модель RuBERT
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-t(ba^mvl_^0+(4&+o1%bw+^2qq)e%-=&3=z0l5ik&5%nhg5lce'
@@ -157,6 +154,6 @@ LOGGING = {
 }
 
 # BERT_MODEL_NAME = 'DeepPavlov/rubert-base-cased'  # Используем базовую модель
-BERT_MODEL_NAME = 'models/finetuned_rubert'  # Используем обученную модель
+BERT_MODEL_PATH = os.path.join(BASE_DIR, 'models/finetuned_rubert')  # Используем обученную модель
 
 USE_DEPRECATED_PYTZ = False

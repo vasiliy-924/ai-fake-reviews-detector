@@ -5,10 +5,10 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         iputils-ping \
         netcat-traditional \
+        curl \
         libxml2-dev \
         libxslt1-dev \
         gcc \
-        curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -18,13 +18,18 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# Копируем структуру проекта
+# Копируем проект и модель
+COPY models/ ./models/
 COPY fake_reviews_detector/ ./fake_reviews_detector/
 COPY api/ ./api/
 COPY reviews/ ./reviews/
 COPY manage.py .
 
 # Настройка путей
-ENV PYTHONPATH="${PYTHONPATH}:/app:/app/fake_reviews_detector"
+ENV PYTHONPATH="${PYTHONPATH}:/app"
+
+# Healthcheck с использованием curl
+HEALTHCHECK --interval=30s --timeout=10s \
+  CMD curl --fail http://localhost:8000/healthcheck/ || exit 1
 
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

@@ -3,20 +3,21 @@ from .models import Review, AnalysisResult
 from .ml.bert_model import load_model, predict_fake
 from django.conf import settings
 
-model, tokenizer = load_model()   # Загружаем модель и токенизатор ОДИН РАЗ при старте воркера
-
 @shared_task(bind=True)
 def analyze_review(self, review_id):
     try:
-        review = Review.objects.get(id=review_id)  # Получаем отзыв из БД
-        prob = predict_fake(review.text, model, tokenizer)  # Делаем предсказание
-        is_fake = prob > 0.5  # Определяем фейк (порог 0.5)
-        if review.reputation < 1:
+        # Перенес загрузку модели ВНУТРЬ задачи
+        model, tokenizer = load_model()  # <-- Исправление 1
+        
+        review = Review.objects.get(id=review_id)
+        prob = predict_fake(review.text, model, tokenizer)
+        is_fake = prob > 0.5
+        
+        if review.reputation < 1 and review.source is 'otzovik':
             is_fake = True
-            prob = 0.8  # Скорее всего фейк
+            prob = 0.8
 
-
-        result = AnalysisResult.objects.create(  # Сохраняем результат
+        result = AnalysisResult.objects.create(
             review=review,
             is_fake=is_fake,
             probability=prob,
@@ -28,9 +29,6 @@ def analyze_review(self, review_id):
         return str(result.id)
         
     except Exception as e:
-        self.update_state(  # Логируем ошибку
-            state='FAILURE', 
-            meta={'exc': str(e)}
-        )
+        logger = self.get_logger()  # <-- Исправление 2
+        logger.error(f"Error: {str(e)}")
         raise
-

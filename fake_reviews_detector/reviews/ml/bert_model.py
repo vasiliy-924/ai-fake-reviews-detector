@@ -1,3 +1,4 @@
+import os
 import torch
 from transformers import (
     BertTokenizer, 
@@ -11,12 +12,16 @@ from django.conf import settings
 
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
-def load_model(model_name=None):
-    """Загружает модель из настроек Django"""
-    model_name = getattr(settings, 'BERT_MODEL_NAME', 'DeepPavlov/rubert-base-cased')
-    tokenizer = BertTokenizer.from_pretrained(model_name)
-    model = BertForSequenceClassification.from_pretrained(model_name, num_labels=2)
-    model.to(device)  # Перемещаем модель на устройство (MPS или CPU)
+def load_model():
+    model_path = settings.BERT_MODEL_PATH  # Используем абсолютный путь
+    
+    # Явная проверка существования модели
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model directory {model_path} not found!")
+    
+    # Загрузка с локального пути
+    tokenizer = BertTokenizer.from_pretrained(model_path)
+    model = BertForSequenceClassification.from_pretrained(model_path)
     return model, tokenizer
 
 def predict_fake(text, model, tokenizer):
