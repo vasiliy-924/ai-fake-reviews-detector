@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('reviews', '0005_debuglog_parserconfig'),
+        ("reviews", "0005_debuglog_parserconfig"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='review',
-            name='is_fake',
-            field=models.BooleanField(default=False, verbose_name='Фейковый'),
+            model_name="review",
+            name="is_fake",
+            field=models.BooleanField(default=False, verbose_name="Фейковый"),
         ),
     ]
