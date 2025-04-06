@@ -1,25 +1,27 @@
 
+
 services:
   web:
     build: 
       context: ./fake_reviews_detector
       dockerfile: Dockerfile
-    command: python manage.py runserver 0.0.0.0:8000
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py createsuperuser &&
+             python manage.py runserver 0.0.0.0:8000"
     volumes:
       - ./fake_reviews_detector:/app
-      - ./fake_reviews_detector/api:/app/api
-      - ./fake_reviews_detector/reviews:/app/reviews
     ports:
       - "8000:8000"
-    environment:
-      - PYTHONPATH=/app:/app/fake_reviews_detector
     env_file: 
       - .env
     networks:
       - app-network
     depends_on:
-      - redis
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   celery_worker:
     build: 
@@ -28,10 +30,6 @@ services:
     command: celery -A fake_reviews_detector.celery_app worker --loglevel=info
     volumes:
       - ./fake_reviews_detector:/app
-      - ./fake_reviews_detector/api:/app/api
-      - ./fake_reviews_detector/reviews:/app/reviews
-    environment:
-      - PYTHONPATH=/app:/app/fake_reviews_detector
     env_file:
       - .env
     networks:
@@ -47,10 +45,6 @@ services:
     command: celery -A fake_reviews_detector.celery_app beat -l INFO
     volumes:
       - ./fake_reviews_detector:/app
-      - ./fake_reviews_detector/api:/app/api
-      - ./fake_reviews_detector/reviews:/app/reviews
-    environment:
-      - PYTHONPATH=/app:/app/fake_reviews_detector
     env_file:
       - .env
     networks:
@@ -60,10 +54,9 @@ services:
       - web
 
   redis:
-    image: arm64v8/redis:alpine  #попробовать imgage: arm64v8/redis:alpine
-    container_name: redis
-    ports:
-      - "6379:6379"
+    image: redis:alpine
+    volumes:
+      - redis_data:/data
     networks:
       - app-network
     healthcheck:
@@ -82,9 +75,15 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   app-network:
